@@ -8,7 +8,7 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa';
 import './Header.css';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useCurrentUser } from '../hooks/useCurrentUser.js';
 
 const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);

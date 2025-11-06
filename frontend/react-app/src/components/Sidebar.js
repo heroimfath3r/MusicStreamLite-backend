@@ -58,12 +58,6 @@ const Sidebar = () => {
               <span>Novedades</span>
             </NavLink>
           </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/radio" className="sidebar-link">
-              <FaBroadcastTower size={18} /> {/* ✅ ícono correcto */}
-              <span>Radio</span>
-            </NavLink>
-          </motion.li>
         </motion.ul>
 
         <motion.div className="sidebar-divider" variants={itemVariants}></motion.div>
@@ -71,12 +65,6 @@ const Sidebar = () => {
         {/* Grupo: Biblioteca */}
         <motion.h3 variants={itemVariants}>Biblioteca</motion.h3>
         <motion.ul className="nav-group" variants={sidebarVariants}>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/library/recent" className="sidebar-link">
-              <FaCompactDisc size={18} />
-              <span>Recién añadidas</span>
-            </NavLink>
-          </motion.li>
           <motion.li variants={itemVariants}>
             <NavLink to="/library/artists" className="sidebar-link">
               <FaUserCircle size={18} />
@@ -93,12 +81,6 @@ const Sidebar = () => {
             <NavLink to="/library/songs" className="sidebar-link">
               <FaItunesNote size={18} />
               <span>Canciones</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/library/made-for-you" className="sidebar-link">
-              <FaHeart size={18} />
-              <span>Hechos para ti</span>
             </NavLink>
           </motion.li>
         </motion.ul>

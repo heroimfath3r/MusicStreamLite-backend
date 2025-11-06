@@ -12,8 +12,8 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import './Profile.css';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import { usersAPI } from '../services/api';
+import { useCurrentUser } from '../hooks/useCurrentUser.js';
+import { usersAPI } from '../services/api.js';
 
 const Profile = () => {
   const { user, loading, refetch } = useCurrentUser();

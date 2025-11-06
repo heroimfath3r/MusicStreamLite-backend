@@ -1,6 +1,6 @@
 // src/hooks/useCurrentUser.js
 import { useState, useEffect } from 'react';
-import { usersAPI } from '../services/api';
+import { usersAPI } from '../services/api.js';
 
 /**
  * Hook personalizado para obtener y cachear la información del usuario actual

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FaNewspaper } from 'react-icons/fa';
 import {
   FaHome,
   FaSearch,
@@ -15,7 +16,7 @@ import {
   FaMusic,
   FaSpinner // Para loading
 } from 'react-icons/fa';
-import { playlistsAPI, songsAPI } from '../services/api';
+import { playlistsAPI, songsAPI } from '../services/api.js';
 import './Sidebar.css';
 
 const Sidebar = () => {

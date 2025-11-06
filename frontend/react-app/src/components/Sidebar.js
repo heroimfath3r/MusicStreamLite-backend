@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  FaHome, 
-  FaSearch, 
+import {
+  FaHome,
+  FaSearch,
   FaBook, // Usaremos FaBook para "Tu Biblioteca"
   FaPlus,
   FaHeart,
@@ -11,23 +11,55 @@ import {
   FaUserCircle, // Para Artistas
   FaItunesNote, // Para Canciones
   FaList, // Para Playlists
-  FaBroadcastTower, // ✅ Reemplaza a FaRadio
-  FaNewspaper,
-  FaMusic
+  FaBroadcastTower, // Para Radio
+  FaMusic,
+  FaSpinner // Para loading
 } from 'react-icons/fa';
+import { playlistsAPI, songsAPI } from '../services/api';
 import './Sidebar.css';
 
 const Sidebar = () => {
+  // Estados para datos dinámicos
+  const [playlists, setPlaylists] = useState([]);
+  const [recentSongs, setRecentSongs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Cargar playlists al montar el componente
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Cargar playlists del usuario
+        const playlistsData = await playlistsAPI.getAll();
+        setPlaylists(playlistsData.playlists || []);
+
+        // Cargar canciones recientes (últimas 5)
+        const songsData = await songsAPI.getAll({ limit: 5, sort: 'created_at', order: 'DESC' });
+        setRecentSongs(songsData.songs || []);
+
+      } catch (err) {
+        console.error('Error cargando datos del sidebar:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const sidebarVariants = {
     hidden: { x: -250 },
-    visible: { 
-      x: 0, 
-      transition: { 
-        duration: 0.5, 
+    visible: {
+      x: 0,
+      transition: {
+        duration: 0.5,
         ease: "easeOut",
         when: "beforeChildren",
         staggerChildren: 0.05
-      } 
+      }
     }
   };
 
@@ -53,14 +85,8 @@ const Sidebar = () => {
             </NavLink>
           </motion.li>
           <motion.li variants={itemVariants}>
-            <NavLink to="/browse" className="sidebar-link">
-              <FaNewspaper size={18} />
-              <span>Novedades</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
             <NavLink to="/radio" className="sidebar-link">
-              <FaBroadcastTower size={18} /> {/* ✅ ícono correcto */}
+              <FaBroadcastTower size={18} />
               <span>Radio</span>
             </NavLink>
           </motion.li>
@@ -126,42 +152,54 @@ const Sidebar = () => {
               <span>Canciones favoritas</span>
             </NavLink>
           </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/chill" className="sidebar-link small-text">
-              <span className="playlist-dot" style={{backgroundColor: '#4ECDC4'}}></span>
-              <span>Concentración en p...</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/dark" className="sidebar-link small-text">
-              <span className="playlist-dot" style={{backgroundColor: '#6B5B95'}}></span>
-              <span>Damn</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/everything" className="sidebar-link small-text">
-              <span className="playlist-dot" style={{backgroundColor: '#FEB236'}}></span>
-              <span>Everything</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/future" className="sidebar-link small-text">
-              <span className="playlist-dot" style={{backgroundColor: '#D6ED17'}}></span>
-              <span>Future Essentials</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/gunna" className="sidebar-link small-text">
-              <span className="playlist-dot" style={{backgroundColor: '#FF6B6B'}}></span>
-              <span>Gunna Essentials</span>
-            </NavLink>
-          </motion.li>
-          <motion.li variants={itemVariants}>
-            <NavLink to="/playlist/etc" className="sidebar-link small-text">
-              <FaList size={16} />
-              <span>Más...</span>
-            </NavLink>
-          </motion.li>
+
+          {/* Mostrar indicador de carga */}
+          {loading && (
+            <motion.li variants={itemVariants}>
+              <div className="sidebar-link small-text">
+                <FaSpinner className="fa-spin" size={16} />
+                <span>Cargando...</span>
+              </div>
+            </motion.li>
+          )}
+
+          {/* Mostrar playlists del usuario */}
+          {!loading && playlists.length > 0 && playlists.slice(0, 8).map((playlist, index) => {
+            // Generar colores aleatorios para los dots
+            const colors = ['#4ECDC4', '#6B5B95', '#FEB236', '#D6ED17', '#FF6B6B', '#95E1D3', '#F38181', '#AA96DA'];
+            const color = colors[index % colors.length];
+
+            return (
+              <motion.li key={playlist.playlist_id} variants={itemVariants}>
+                <NavLink to={`/playlist/${playlist.playlist_id}`} className="sidebar-link small-text">
+                  <span className="playlist-dot" style={{backgroundColor: color}}></span>
+                  <span title={playlist.name}>
+                    {playlist.name.length > 20 ? `${playlist.name.substring(0, 20)}...` : playlist.name}
+                  </span>
+                </NavLink>
+              </motion.li>
+            );
+          })}
+
+          {/* Mostrar mensaje si no hay playlists */}
+          {!loading && playlists.length === 0 && (
+            <motion.li variants={itemVariants}>
+              <div className="sidebar-link small-text" style={{ opacity: 0.6 }}>
+                <FaMusic size={16} />
+                <span>No hay playlists</span>
+              </div>
+            </motion.li>
+          )}
+
+          {/* Mostrar "Más..." si hay más de 8 playlists */}
+          {!loading && playlists.length > 8 && (
+            <motion.li variants={itemVariants}>
+              <NavLink to="/playlist/all" className="sidebar-link small-text">
+                <FaList size={16} />
+                <span>Más... ({playlists.length - 8})</span>
+              </NavLink>
+            </motion.li>
+          )}
         </motion.ul>
       </nav>
 

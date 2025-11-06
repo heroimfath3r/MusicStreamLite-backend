@@ -1,5 +1,5 @@
 // src/pages/Profile.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FaUser,
@@ -12,19 +12,54 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import './Profile.css';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { usersAPI } from '../services/api';
 
 const Profile = () => {
+  const { user, loading, refetch } = useCurrentUser();
   const [isEditing, setIsEditing] = useState(false);
-  const [userInfo, setUserInfo] = useState({
-    name: 'Juan Pérez',
-    email: 'juan@example.com',
-    joinDate: 'Enero 2024',
-    favoriteGenre: 'Rock',
-    songsPlayed: 1250,
-    favoriteSongs: 48
+  const [editedInfo, setEditedInfo] = useState({});
+  const [stats, setStats] = useState({
+    totalPlays: 0,
+    favoriteSongs: 0
   });
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  const [editedInfo, setEditedInfo] = useState(userInfo);
+  // Cargar estadísticas del usuario
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoadingStats(true);
+        const [statsResponse, favoritesResponse] = await Promise.all([
+          usersAPI.getHistory({ limit: 1 }),
+          usersAPI.getFavorites()
+        ]);
+
+        setStats({
+          totalPlays: statsResponse.total || 0,
+          favoriteSongs: favoritesResponse.count || 0
+        });
+      } catch (error) {
+        console.error('Error al cargar estadísticas:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
+
+  // Inicializar editedInfo cuando el usuario cargue
+  useEffect(() => {
+    if (user) {
+      setEditedInfo({
+        name: user.name || '',
+        country: user.country || ''
+      });
+    }
+  }, [user]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -48,16 +83,28 @@ const Profile = () => {
 
   const handleEdit = () => {
     setIsEditing(true);
-    setEditedInfo(userInfo);
+    setEditedInfo({
+      name: user.name || '',
+      country: user.country || ''
+    });
   };
 
-  const handleSave = () => {
-    setUserInfo(editedInfo);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      await usersAPI.updateProfile(editedInfo);
+      await refetch(); // Recargar datos del usuario
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
+      alert('Error al actualizar el perfil. Por favor intenta de nuevo.');
+    }
   };
 
   const handleCancel = () => {
-    setEditedInfo(userInfo);
+    setEditedInfo({
+      name: user.name || '',
+      country: user.country || ''
+    });
     setIsEditing(false);
   };
 
@@ -67,6 +114,33 @@ const Profile = () => {
       [field]: value
     }));
   };
+
+  // Función para formatear fecha
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+  };
+
+  if (loading) {
+    return (
+      <div className="profile-container">
+        <div className="profile-content">
+          <p>Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="profile-container">
+        <div className="profile-content">
+          <p>No se pudo cargar la información del usuario</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -94,11 +168,11 @@ const Profile = () => {
                 className="profile-name-input"
               />
             ) : (
-              <h1 className="profile-name">{userInfo.name}</h1>
+              <h1 className="profile-name">{user.name}</h1>
             )}
 
             <p className="profile-member-since">
-              <FaCalendar /> Miembro desde {userInfo.joinDate}
+              <FaCalendar /> Miembro desde {formatDate(user.createdAt)}
             </p>
           </div>
 
@@ -147,31 +221,23 @@ const Profile = () => {
               <div className="info-label">
                 <FaEnvelope /> Email
               </div>
-              {isEditing ? (
-                <input
-                  type="email"
-                  value={editedInfo.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  className="info-input"
-                />
-              ) : (
-                <div className="info-value">{userInfo.email}</div>
-              )}
+              <div className="info-value">{user.email}</div>
             </div>
 
             <div className="info-item">
               <div className="info-label">
-                <FaMusic /> Género Favorito
+                <FaMusic /> País
               </div>
               {isEditing ? (
                 <input
                   type="text"
-                  value={editedInfo.favoriteGenre}
-                  onChange={(e) => handleChange('favoriteGenre', e.target.value)}
+                  value={editedInfo.country || ''}
+                  onChange={(e) => handleChange('country', e.target.value)}
                   className="info-input"
+                  placeholder="Ingresa tu país"
                 />
               ) : (
-                <div className="info-value">{userInfo.favoriteGenre}</div>
+                <div className="info-value">{user.country || 'No especificado'}</div>
               )}
             </div>
           </div>
@@ -192,7 +258,9 @@ const Profile = () => {
               <div className="stat-icon">
                 <FaMusic />
               </div>
-              <div className="stat-value">{userInfo.songsPlayed}</div>
+              <div className="stat-value">
+                {loadingStats ? '...' : stats.totalPlays}
+              </div>
               <div className="stat-label">Canciones reproducidas</div>
             </motion.div>
 
@@ -203,7 +271,9 @@ const Profile = () => {
               <div className="stat-icon">
                 <FaHeart />
               </div>
-              <div className="stat-value">{userInfo.favoriteSongs}</div>
+              <div className="stat-value">
+                {loadingStats ? '...' : stats.favoriteSongs}
+              </div>
               <div className="stat-label">Canciones favoritas</div>
             </motion.div>
           </div>

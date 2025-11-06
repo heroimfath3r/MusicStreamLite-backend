@@ -8,11 +8,13 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa';
 import './Header.css';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading } = useCurrentUser();
 
   const isActive = (path) => location.pathname === path;
 
@@ -135,8 +137,12 @@ const Header = () => {
                   <FaUser size={20} />
                 </div>
                 <div>
-                  <div className="user-name">Juan Pérez</div>
-                  <div className="user-email">juan@example.com</div>
+                  <div className="user-name">
+                    {loading ? 'Cargando...' : (user?.name || 'Usuario')}
+                  </div>
+                  <div className="user-email">
+                    {loading ? '' : (user?.email || '')}
+                  </div>
                 </div>
               </div>
             </div>

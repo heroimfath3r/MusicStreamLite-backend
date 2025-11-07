@@ -1,6 +1,6 @@
 // src/routes/albums.js
 import express from 'express';
-import pool from '../config/database.js'; // Asegúrate de tener este archivo de configuración
+import pool from '../config/database.js';
 
 const router = express.Router();
 
@@ -28,13 +28,38 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /albums/artist/:artistId
+ * Obtiene todos los álbumes de un artista específico
+ * IMPORTANTE: Esta ruta debe ir ANTES de /:id para evitar conflictos
+ */
+router.get('/artist/:artistId', async (req, res) => {
+  try {
+    const { artistId } = req.params;
+    const query = 'SELECT * FROM albums WHERE artist_id = $1 ORDER BY release_date DESC';
+    const result = await pool.query(query, [artistId]);
+    
+    res.status(200).json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching albums by artist:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener los álbumes del artista',
+      error: error.message
+    });
+  }
+});
+
+/**
  * GET /albums/:id
  * Obtiene un álbum específico por ID
  */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const query = 'SELECT * FROM albums WHERE id = $1';
+    const query = 'SELECT * FROM albums WHERE album_id = $1';
     const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
@@ -61,11 +86,11 @@ router.get('/:id', async (req, res) => {
 /**
  * POST /albums
  * Crea un nuevo álbum
- * Body esperado: { title, artist_id, release_date, cover_url, genre, duration_ms }
+ * Body esperado: { title, artist_id, release_date, cover_image_url }
  */
 router.post('/', async (req, res) => {
   try {
-    const { title, artist_id, release_date, cover_url, genre, duration_ms } = req.body;
+    const { title, artist_id, release_date, cover_image_url } = req.body;
     
     // Validación básica
     if (!title || !artist_id) {
@@ -76,12 +101,12 @@ router.post('/', async (req, res) => {
     }
     
     const query = `
-      INSERT INTO albums (title, artist_id, release_date, cover_url, genre, duration_ms) 
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO albums (title, artist_id, release_date, cover_image_url) 
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
     
-    const values = [title, artist_id, release_date, cover_url, genre, duration_ms];
+    const values = [title, artist_id, release_date || null, cover_image_url || null];
     const result = await pool.query(query, values);
     
     res.status(201).json({
@@ -112,7 +137,7 @@ router.post('/', async (req, res) => {
 /**
  * PUT /albums/:id
  * Actualiza un álbum existente
- * Body esperado: campos a actualizar
+ * Body esperado: campos a actualizar (title, artist_id, release_date, cover_image_url)
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -120,7 +145,7 @@ router.put('/:id', async (req, res) => {
     const updates = req.body;
     
     // Verificar que haya campos para actualizar
-    const validFields = ['title', 'artist_id', 'release_date', 'cover_url', 'genre', 'duration_ms'];
+    const validFields = ['title', 'artist_id', 'release_date', 'cover_image_url'];
     const fieldsToUpdate = Object.keys(updates).filter(key => validFields.includes(key));
     
     if (fieldsToUpdate.length === 0) {
@@ -137,7 +162,7 @@ router.put('/:id', async (req, res) => {
     const query = `
       UPDATE albums 
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
+      WHERE album_id = $1
       RETURNING *
     `;
     
@@ -182,7 +207,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const query = 'DELETE FROM albums WHERE id = $1 RETURNING id';
+    const query = 'DELETE FROM albums WHERE album_id = $1 RETURNING album_id';
     const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
@@ -211,30 +236,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al eliminar el álbum',
-      error: error.message
-    });
-  }
-});
-
-/**
- * GET /albums/artist/:artistId
- * Obtiene todos los álbumes de un artista específico
- */
-router.get('/artist/:artistId', async (req, res) => {
-  try {
-    const { artistId } = req.params;
-    const query = 'SELECT * FROM albums WHERE artist_id = $1 ORDER BY release_date DESC';
-    const result = await pool.query(query, [artistId]);
-    
-    res.status(200).json({
-      success: true,
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching albums by artist:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener los álbumes del artista',
       error: error.message
     });
   }

@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import analyticsRoutes from './routes/analytics.js';
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(helmet());

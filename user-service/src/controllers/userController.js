@@ -1,5 +1,5 @@
 // backend/user-service/src/controllers/userController.js
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database.js';
 

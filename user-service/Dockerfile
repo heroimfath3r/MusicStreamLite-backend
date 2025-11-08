@@ -30,6 +30,9 @@ RUN npm ci --only=production && \
 # Copy source code from builder
 COPY --from=builder /app .
 
+# Rebuild bcrypt for the correct platform
+RUN npm rebuild bcrypt --build-from-source
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs

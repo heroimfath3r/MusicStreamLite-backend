@@ -28,7 +28,7 @@ RUN npm ci --only=production && \
     npm cache clean --force
 
 # Copy source code from builder
-COPY --from=builder /app/src ./src
+COPY --from=builder /app .
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -46,7 +46,7 @@ ENV PORT=8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://0.0.0.0:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application
 CMD ["npm", "start"]

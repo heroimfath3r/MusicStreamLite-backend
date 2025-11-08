@@ -55,7 +55,7 @@ process.on('SIGINT', async () => {
 const startServer = async () => {
   try {
     await initDB();
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 User Service corriendo en http://0.0.0.0:${PORT}`);
       console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
     });

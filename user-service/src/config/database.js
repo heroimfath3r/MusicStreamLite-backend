@@ -22,13 +22,20 @@ let poolConfig;
 
 if (INSTANCE_CONNECTION_NAME) {
   console.log('☁️ Using Cloud SQL socket connection...');
+  console.log(`🔗 Instance: ${INSTANCE_CONNECTION_NAME}`);
+  console.log(`🔗 Socket path: /cloudsql/${INSTANCE_CONNECTION_NAME}`);
+  
   poolConfig = {
     ...baseConfig,
     host: `/cloudsql/${INSTANCE_CONNECTION_NAME}`,
+    port: undefined, // ⭐ CRÍTICO: No usar puerto con socket Unix
     ssl: false // Cloud SQL socket no necesita SSL
   };
 } else {
   console.log('💻 Using direct IP connection (local)');
+  console.log(`🔗 Host: ${process.env.DB_HOST || '34.44.172.72'}`);
+  console.log(`🔗 Port: ${process.env.DB_PORT || 5432}`);
+  
   poolConfig = {
     ...baseConfig,
     host: process.env.DB_HOST || '34.44.172.72',
@@ -46,6 +53,8 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('🔴 Database pool error:', err);
+  console.error('Error details:', err.message);
+  console.error('Error code:', err.code);
 });
 
 pool.on('remove', () => {
@@ -56,8 +65,15 @@ pool.on('remove', () => {
 // Initialize database connection
 // ===============================
 export const initDB = async () => {
-  const client = await pool.connect();
+  let client;
   try {
+    console.log('🔄 Attempting to connect to database...');
+    console.log(`   Database: ${baseConfig.database}`);
+    console.log(`   User: ${baseConfig.user}`);
+    
+    client = await pool.connect();
+    console.log('✅ Database client acquired from pool');
+    
     console.log('🔄 Verifying database connection...');
     const result = await client.query('SELECT NOW() as current_time');
     console.log('✅ Database connected at:', result.rows[0].current_time);
@@ -72,11 +88,29 @@ export const initDB = async () => {
     `);
 
     console.log('📋 Tables found:', tables.rows.map(r => r.table_name).join(', ') || 'No tables found');
+    
   } catch (error) {
-    console.error('❌ Database initialization error:', error);
+    console.error('❌ Database initialization error:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error stack:', error.stack);
+    
+    // Logging adicional para debugging
+    if (error.code === 'ECONNREFUSED') {
+      console.error('💡 Hint: Connection refused. Check if the database is running and accessible.');
+    } else if (error.code === 'ENOTFOUND') {
+      console.error('💡 Hint: Host not found. Check INSTANCE_CONNECTION_NAME or DB_HOST.');
+    } else if (error.code === '28P01') {
+      console.error('💡 Hint: Authentication failed. Check DB_USER and DB_PASSWORD.');
+    } else if (error.code === '3D000') {
+      console.error('💡 Hint: Database does not exist. Check DB_NAME.');
+    }
+    
     throw error;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+      console.log('🔵 Database client released back to pool');
+    }
   }
 };
 
@@ -94,8 +128,12 @@ export const checkDatabaseHealth = async () => {
       version: result.rows[0].version
     };
   } catch (error) {
-    console.error('🔴 Database health check failed:', error);
-    return { status: 'unhealthy', error: error.message };
+    console.error('🔴 Database health check failed:', error.message);
+    return { 
+      status: 'unhealthy', 
+      error: error.message,
+      code: error.code 
+    };
   }
 };
 
@@ -157,4 +195,5 @@ export const databaseUtils = {
     };
   }
 };
-export default pool;
+
+export default pool; 

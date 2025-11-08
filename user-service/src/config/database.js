@@ -1,3 +1,4 @@
+// user-service/src/config/database.js
 import dotenv from 'dotenv';
 dotenv.config();
 

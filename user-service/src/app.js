@@ -56,8 +56,8 @@ const startServer = async () => {
   try {
     await initDB();
     app.listen(PORT, () => {
-      console.log(`🚀 User Service corriendo en http://localhost:${PORT}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`🚀 User Service corriendo en http://0.0.0.0:${PORT}`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
     });
   } catch (error) {
     console.error('❌ Error al iniciar el servicio:', error);

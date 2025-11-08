@@ -1,20 +1,13 @@
-// backend/analytics-service/src/config/database.js
+// analytics-service/src/config/database.js
 import { Firestore } from '@google-cloud/firestore';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-/**
- * Configuración de Firestore Database
- * Analytics Service usa Firestore para almacenar datos de reproducción
- * y métricas en tiempo real
- */
-
 let firestoreInstance = null;
 
 /**
  * Inicializa la conexión a Firestore
- * @returns {Firestore} Instancia de Firestore
  */
 export const initFirestore = () => {
   if (firestoreInstance) {
@@ -26,23 +19,16 @@ export const initFirestore = () => {
       projectId: process.env.FIRESTORE_PROJECT_ID || process.env.PROJECT_ID || 'musicstreamlite',
     };
 
-    // En desarrollo local con emulador
     if (process.env.NODE_ENV === 'development' && process.env.FIRESTORE_EMULATOR_HOST) {
       console.log(`📊 Conectando a Firestore Emulator: ${process.env.FIRESTORE_EMULATOR_HOST}`);
-      // El emulador no requiere credenciales
     } else if (process.env.NODE_ENV === 'production') {
-      // En producción (Cloud Run), usa Application Default Credentials
-      // Cloud Run automáticamente provee las credenciales del Service Account
       console.log(`📊 Conectando a Firestore Production: ${config.projectId}`);
     } else {
-      // En desarrollo local sin emulador, puedes usar gcloud auth
-      // o configurar GOOGLE_APPLICATION_CREDENTIALS
       console.log(`📊 Conectando a Firestore: ${config.projectId}`);
       console.log(`💡 Asegúrate de haber ejecutado: gcloud auth application-default login`);
     }
 
     firestoreInstance = new Firestore(config);
-
     console.log('✅ Firestore inicializado correctamente');
     return firestoreInstance;
   } catch (error) {
@@ -53,7 +39,6 @@ export const initFirestore = () => {
 
 /**
  * Obtiene la instancia de Firestore
- * @returns {Firestore} Instancia de Firestore
  */
 export const getFirestore = () => {
   if (!firestoreInstance) {
@@ -61,6 +46,10 @@ export const getFirestore = () => {
   }
   return firestoreInstance;
 };
+
+// ⭐ NUEVOS EXPORTS QUE FALTABAN ⭐
+export const firestore = getFirestore();
+export const analyticsDB = firestore.collection('analytics');
 
 /**
  * Cierra la conexión a Firestore
@@ -74,13 +63,11 @@ export const closeFirestore = async () => {
 };
 
 /**
- * Verifica la conexión a Firestore
- * @returns {Promise<boolean>} True si la conexión es exitosa
+ * Health check
  */
 export const checkFirestoreConnection = async () => {
   try {
     const db = getFirestore();
-    // Intenta leer una colección ficticia para verificar conexión
     await db.collection('_health_check').limit(1).get();
     console.log('✅ Health check de Firestore exitoso');
     return true;
@@ -91,31 +78,16 @@ export const checkFirestoreConnection = async () => {
 };
 
 /**
- * Nombres de colecciones (constantes)
- * Mantiene organizada la estructura de datos en Firestore
+ * Nombres de colecciones
  */
 export const COLLECTIONS = {
-  PLAYS: 'plays',                     // Registro de reproducciones
-  USER_STATS: 'user_stats',           // Estadísticas por usuario
-  SONG_STATS: 'song_stats',           // Estadísticas por canción
-  DAILY_METRICS: 'daily_metrics',     // Métricas diarias agregadas
-  RECOMMENDATIONS: 'recommendations',  // Recomendaciones generadas
-  TRENDING: 'trending',               // Canciones en tendencia
+  PLAYS: 'plays',
+  USER_STATS: 'user_stats',
+  SONG_STATS: 'song_stats',
+  DAILY_METRICS: 'daily_metrics',
+  RECOMMENDATIONS: 'recommendations',
+  TRENDING: 'trending',
 };
-
-/**
- * Índices recomendados para Firestore (crear manualmente en la consola):
- * 
- * Collection: plays
- * - userId (Ascending), timestamp (Descending)
- * - songId (Ascending), timestamp (Descending)
- * 
- * Collection: song_stats
- * - playCount (Descending), lastPlayedAt (Descending)
- * 
- * Collection: user_stats
- * - totalPlays (Descending), lastPlayedAt (Descending)
- */
 
 export default {
   initFirestore,
@@ -123,4 +95,6 @@ export default {
   closeFirestore,
   checkFirestoreConnection,
   COLLECTIONS,
+  firestore,        // ⭐ Agregado
+  analyticsDB,      // ⭐ Agregado
 };

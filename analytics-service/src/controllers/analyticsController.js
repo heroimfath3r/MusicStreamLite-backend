@@ -247,7 +247,7 @@ async function updateSongAnalytics(songId) {
 }
 
 // Update user analytics
-async function updateUserAnalytics(userId, songId) {
+export async function updateUserAnalytics(userId, songId) {
   try {
     const userAnalyticsRef = firestore.collection('user_analytics').doc(userId);
     
@@ -264,7 +264,7 @@ async function updateUserAnalytics(userId, songId) {
 }
 
 // Get detailed song analytics
-async function getSongAnalyticsData(songId, period) {
+export async function getSongAnalyticsData(songId, period) {
   const now = new Date();
   let startDate = new Date();
 
@@ -329,7 +329,7 @@ async function getSongAnalyticsData(songId, period) {
 }
 
 // Get trending songs
-async function getTrendingSongsData(limit, period) {
+export async function getTrendingSongsData(limit, period) {
   const now = new Date();
   let startDate = new Date();
 
@@ -443,7 +443,7 @@ async function generateRecommendations(userId, limit) {
 }
 
 // Get platform-wide analytics
-async function getPlatformAnalyticsData(period) {
+ export async function getPlatformAnalyticsData(period) {
   const now = new Date();
   let startDate = new Date();
 

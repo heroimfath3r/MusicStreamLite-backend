@@ -22,19 +22,19 @@ const router = express.Router();
 // ====================================================
 
 // 👉 Registrar nuevo usuario
-router.post('/users/register', register);
+router.post('/register', register);
 
 // 👉 Login de usuario
-router.post('/users/login', login);
+router.post('/login', login);
 
 // 👉 Obtener todos los usuarios (solo para pruebas/admin)
-router.get('/users', getAllUsers);
+router.get('/', getAllUsers);
 
 // 👉 Perfil del usuario autenticado
-router.get('/users/profile', authenticateToken, getProfile);
+router.get('/profile', authenticateToken, getProfile);
 
 // 👉 Actualizar perfil del usuario autenticado
-router.put('/users/profile', authenticateToken, updateProfile);
+router.put('/profile', authenticateToken, updateProfile);
 
 // ====================================================
 // FAVORITES (manejo de canciones favoritas)

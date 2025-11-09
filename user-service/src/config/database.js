@@ -11,6 +11,7 @@ const INSTANCE_CONNECTION_NAME = process.env.INSTANCE_CONNECTION_NAME; // projec
 const baseConfig = {
   user: process.env.DB_USER || 'musicstreamdb',
   database: process.env.DB_NAME || 'musicstream_db',
+  host: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`,
   password: process.env.DB_PASSWORD,
   max: 20,
   idleTimeoutMillis: 30000,

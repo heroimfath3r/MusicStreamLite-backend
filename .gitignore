@@ -1,6 +1,6 @@
 # Google Cloud Service Account Keys
-service-account-key.json
-backend/*/service-account-key.json
+serviceAccountKey.json
+backend/*/serviceAccountKey.json
 
 # Node.js
 node_modules/

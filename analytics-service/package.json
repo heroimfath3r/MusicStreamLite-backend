@@ -9,8 +9,8 @@
     "dev": "nodemon src/app.js",
     "test": "jest",
     "docker:build": "docker build -t analytics-service .",
-    "docker:run": "docker run -p 3003:3003 analytics-service",
-    "healthcheck": "node health-check.js"
+    "docker:run": "docker run -p 8080:8080 analytics-service",
+    "healthcheck": "node src/healthCheck.js"
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.0.0",
@@ -23,3 +23,4 @@
     "nodemon": "^3.0.1"
   }
 }
+

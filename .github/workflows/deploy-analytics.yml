@@ -97,12 +97,12 @@ jobs:
       - name: ✅ Health check
         run: |
           SERVICE_URL="${{ steps.service-url.outputs.url }}"
-          echo "Checking health at: $SERVICE_URL/api/analytics/health"
+          echo "Checking health at: $SERVICE_URL/health"
           
           # Retry logic: intentar 5 veces
           for i in {1..5}; do
             echo "Attempt $i/5..."
-            if curl -f "$SERVICE_URL/api/analytics/health"; then
+            if curl -f "$SERVICE_URL/health"; then
               echo "✅ Health check passed!"
               exit 0
             fi

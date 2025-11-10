@@ -19,18 +19,29 @@ export const initFirestore = () => {
       projectId: process.env.FIRESTORE_PROJECT_ID || process.env.PROJECT_ID || 'musicstreamlite',
     };
 
-    if (process.env.NODE_ENV === 'development' && process.env.FIRESTORE_EMULATOR_HOST) {
-      console.log(`📊 Conectando a Firestore Emulator: ${process.env.FIRESTORE_EMULATOR_HOST}`);
-    } else if (process.env.NODE_ENV === 'production') {
-      console.log(`📊 Conectando a Firestore Production: ${config.projectId}`);
-    } else {
-      console.log(`📊 Conectando a Firestore: ${config.projectId}`);
+    // 🔑 Si estás ejecutando en local, usa la cuenta de servicio
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      config.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    }
+
+    // 🧪 Si estás usando el emulador local de Firestore
+    if (process.env.FIRESTORE_EMULATOR_HOST) {
+      console.log(`🧪 Conectando al Firestore Emulator en ${process.env.FIRESTORE_EMULATOR_HOST}`);
+      process.env.FIRESTORE_PROJECT_ID = config.projectId;
+    }
+
+    // 🌐 Log de entorno
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`📊 Conectando a Firestore (Producción): ${config.projectId}`);
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log(`📊 Conectando a Firestore (Desarrollo): ${config.projectId}`);
       console.log(`💡 Asegúrate de haber ejecutado: gcloud auth application-default login`);
     }
 
     firestoreInstance = new Firestore(config);
     console.log('✅ Firestore inicializado correctamente');
     return firestoreInstance;
+
   } catch (error) {
     console.error('❌ Error al inicializar Firestore:', error);
     throw error;
@@ -47,10 +58,6 @@ export const getFirestore = () => {
   return firestoreInstance;
 };
 
-// ⭐ NUEVOS EXPORTS QUE FALTABAN ⭐
-export const firestore = getFirestore();
-export const analyticsDB = firestore.collection('analytics');
-
 /**
  * Cierra la conexión a Firestore
  */
@@ -63,7 +70,7 @@ export const closeFirestore = async () => {
 };
 
 /**
- * Health check
+ * Verifica conexión (health check)
  */
 export const checkFirestoreConnection = async () => {
   try {
@@ -78,16 +85,24 @@ export const checkFirestoreConnection = async () => {
 };
 
 /**
- * Nombres de colecciones
+ * Colecciones utilizadas en el microservicio
  */
 export const COLLECTIONS = {
-  PLAYS: 'plays',
-  USER_STATS: 'user_stats',
-  SONG_STATS: 'song_stats',
-  DAILY_METRICS: 'daily_metrics',
-  RECOMMENDATIONS: 'recommendations',
-  TRENDING: 'trending',
+  PLAYS: 'song_plays',
+  SONG_ANALYTICS: 'song_analytics',
+  USER_ANALYTICS: 'user_analytics',
+  ENGAGEMENTS: 'user_engagement',
+  ENGAGEMENT_ANALYTICS: 'engagement_analytics',
+  USER_ENGAGEMENT_PROFILES: 'user_engagement_profiles',
+  PLATFORM_ANALYTICS: 'platform_analytics',
+  HEALTH_CHECKS: 'health_checks',
 };
+
+/**
+ * Export principal (por compatibilidad con el resto del microservicio)
+ */
+export const firestore = getFirestore();
+export const analyticsDB = firestore.collection('analytics');
 
 export default {
   initFirestore,
@@ -95,6 +110,7 @@ export default {
   closeFirestore,
   checkFirestoreConnection,
   COLLECTIONS,
-  firestore,        // ⭐ Agregado
-  analyticsDB,      // ⭐ Agregado
+  firestore,
+  analyticsDB,
 };
+// user-service/src/config/database.js

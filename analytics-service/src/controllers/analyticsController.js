@@ -1,3 +1,4 @@
+// analytics-service/src/controllers/analyticsController.js
 import { analyticsDB, firestore } from '../config/database.js';
 
 // Track song play

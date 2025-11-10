@@ -11,21 +11,62 @@ export const trackPlay = async (req, res) => {
       return res.status(400).json({ error: 'songId is required' });
     }
 
-    const playData = {
+    const durationPlayed = parseInt(duration) || 0;
+    const playTimestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
+
+    // Prepare event data for song_plays collection
+    const playEventData = {
+      userId: userId || null,
       songId,
-      userId: userId || 'anonymous',
-      duration: parseInt(duration),
-      timestamp: new Date(timestamp),
-      createdAt: new Date()
+      duration_played: durationPlayed,
+      timestamp: playTimestamp
     };
 
-    // Store in Firestore
-    const playRef = await firestore.collection('song_plays').add(playData);
+    // Use batch write for atomicity (alternative to transaction for independent writes)
+    const batch = firestore.batch();
 
-    // Update real-time analytics
-    await updateSongAnalytics(songId);
+    // 1. Add event to song_plays collection
+    const playRef = firestore.collection('song_plays').doc();
+    batch.set(playRef, playEventData);
+
+    // 2. Update user_song_stats if userId is present (not anonymous)
+    if (userId && userId !== 'anonymous' && userId !== null) {
+      const statDocId = `${userId}_${songId}`;
+      const statRef = firestore.collection('user_song_stats').doc(statDocId);
+
+      // Get the document to check if it exists
+      const statDoc = await statRef.get();
+
+      if (statDoc.exists) {
+        // Update existing stats using FieldValue.increment()
+        batch.update(statRef, {
+          play_count: firestore.FieldValue.increment(1),
+          total_time_played: firestore.FieldValue.increment(durationPlayed),
+          last_played: playTimestamp
+        });
+      } else {
+        // Create new stats document
+        batch.set(statRef, {
+          userId,
+          songId,
+          play_count: 1,
+          total_time_played: durationPlayed,
+          last_played: playTimestamp
+        });
+      }
+    }
+
+    // Commit the batch
+    await batch.commit();
+
+    // Update real-time analytics (async, not critical for response)
+    updateSongAnalytics(songId).catch(err =>
+      console.error('Error updating song analytics:', err)
+    );
     if (userId && userId !== 'anonymous') {
-      await updateUserAnalytics(userId, songId);
+      updateUserAnalytics(userId, songId).catch(err =>
+        console.error('Error updating user analytics:', err)
+      );
     }
 
     res.status(201).json({
@@ -400,39 +441,33 @@ export async function getTrendingSongsData(limit, period) {
 // Generate user recommendations
 async function generateRecommendations(userId, limit) {
   try {
-    // Get user's listening history
-    const userHistorySnapshot = await firestore
-      .collection('song_plays')
+    // Query user_song_stats collection to get user's most played songs
+    const userStatsSnapshot = await firestore
+      .collection('user_song_stats')
       .where('userId', '==', userId)
-      .orderBy('timestamp', 'desc')
-      .limit(100)
+      .orderBy('play_count', 'desc')
+      .limit(parseInt(limit))
       .get();
 
-    if (userHistorySnapshot.empty) {
-      // Return popular songs if no history
+    if (userStatsSnapshot.empty) {
+      // Return trending songs if no stats found
       return await getTrendingSongsData(limit, '7d');
     }
 
-    // Simple recommendation algorithm:
-    // 1. Get user's most played songs
-    // 2. Find similar songs (this would integrate with catalog service)
-    // 3. Return trending songs as fallback
-
-    const userPlays = {};
-    userHistorySnapshot.forEach(doc => {
-      const play = doc.data();
-      userPlays[play.songId] = (userPlays[play.songId] || 0) + 1;
+    // Map stats documents to recommendation format
+    const recommendations = [];
+    userStatsSnapshot.forEach(doc => {
+      const data = doc.data();
+      recommendations.push({
+        songId: data.songId,
+        play_count: data.play_count,
+        total_time_played: data.total_time_played,
+        last_played: data.last_played,
+        averageDuration: data.play_count > 0
+          ? Math.round(data.total_time_played / data.play_count)
+          : 0
+      });
     });
-
-    // For now, return trending songs as placeholder
-    // In a real implementation, you'd integrate with machine learning
-    // or collaborative filtering algorithms
-    const trending = await getTrendingSongsData(limit * 2, '7d');
-    
-    // Filter out songs the user has already played
-    const recommendations = trending
-      .filter(song => !userPlays[song.songId])
-      .slice(0, parseInt(limit));
 
     return recommendations;
 

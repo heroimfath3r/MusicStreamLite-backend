@@ -54,6 +54,7 @@ export const closeFirestore = async () => {
 
 export const COLLECTIONS = {
   PLAYS: 'song_plays',
+  USER_SONG_STATS: 'user_song_stats',
   SONG_ANALYTICS: 'song_analytics',
   USER_ANALYTICS: 'user_analytics',
   ENGAGEMENTS: 'user_engagement',

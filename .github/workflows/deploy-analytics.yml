@@ -13,6 +13,7 @@ env:
   SERVICE_NAME: analytics-service
   REGION: us-central1
   REGISTRY: us-central1-docker.pkg.dev
+  SERVICE_ACCOUNT: analytics-service@musicstreamlite.iam.gserviceaccount.com
 
 jobs:
   deploy:
@@ -59,7 +60,7 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/musicstreamlite/${{ env.SERVICE_NAME }}:${{ github.sha }}
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/musicstreamlite/${{ env.SERVICE_NAME }}:latest
       
-      # 7. Deploy to Cloud Run
+      # 7. Deploy to Cloud Run WITH SERVICE ACCOUNT
       - name: 🚀 Deploy to Google Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -69,7 +70,9 @@ jobs:
             --allow-unauthenticated \
             --memory=512Mi \
             --timeout=300s \
-            --set-env-vars="FIRESTORE_PROJECT_ID=${{ env.PROJECT_ID }},NODE_ENV=production" \
+            --port=3003 \
+            --service-account=${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars="FIRESTORE_PROJECT_ID=${{ env.PROJECT_ID }},NODE_ENV=production,PORT=3003" \
             --project=${{ env.PROJECT_ID }}
       
       # 8. Get service URL
@@ -83,18 +86,57 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "🔗 Service URL: $URL"
       
-      # 9. Health check
+      # 9. Wait for service to be ready
+      - name: ⏳ Wait for service to be ready
+        run: |
+          sleep 15
+          SERVICE_URL="${{ steps.service-url.outputs.url }}"
+          echo "Waiting for service to stabilize..."
+      
+      # 10. Health check
       - name: ✅ Health check
         run: |
-          sleep 10
           SERVICE_URL="${{ steps.service-url.outputs.url }}"
           echo "Checking health at: $SERVICE_URL/api/analytics/health"
-          curl -f "$SERVICE_URL/api/analytics/health" || exit 1
+          
+          # Retry logic: intentar 5 veces
+          for i in {1..5}; do
+            echo "Attempt $i/5..."
+            if curl -f "$SERVICE_URL/api/analytics/health"; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            if [ $i -lt 5 ]; then
+              echo "⏳ Retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          echo "❌ Health check failed after 5 attempts"
+          exit 1
       
-      # 10. Success notification
+      # 11. Success notification
       - name: 🎉 Deployment successful
         run: |
           echo "✅ Analytics Service deployed successfully"
-          echo "📍 Region: ${{ env.REGION }}"
-          echo "🔗 URL: ${{ steps.service-url.outputs.url }}"
-          echo "📦 Image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/musicstreamlite/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo ""
+          echo "📊 Deployment Details:"
+          echo "  📍 Region: ${{ env.REGION }}"
+          echo "  🔗 URL: ${{ steps.service-url.outputs.url }}"
+          echo "  📦 Image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/musicstreamlite/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "  👤 Service Account: ${{ env.SERVICE_ACCOUNT }}"
+          echo "  🔐 Project: ${{ env.PROJECT_ID }}"
+          echo ""
+          echo "🚀 Ready to use!"
+      
+      # 12. On failure, show logs
+      - name: 📋 Show logs on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed. Showing recent logs..."
+          gcloud logging read \
+            "resource.type=cloud_run_revision AND resource.labels.service_name=${{ env.SERVICE_NAME }}" \
+            --limit=20 \
+            --format='value(textPayload)' \
+            --project=${{ env.PROJECT_ID }} \
+            --freshness=10m || true

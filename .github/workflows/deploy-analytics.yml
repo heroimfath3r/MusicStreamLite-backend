@@ -1,3 +1,4 @@
+# .github/workflows/deploy-analytics.yml
 name: 🚀 Deploy Analytics Service
 
 on:
@@ -70,9 +71,8 @@ jobs:
             --allow-unauthenticated \
             --memory=512Mi \
             --timeout=300s \
-            --port=3003 \
             --service-account=${{ env.SERVICE_ACCOUNT }} \
-            --set-env-vars="FIRESTORE_PROJECT_ID=${{ env.PROJECT_ID }},NODE_ENV=production,PORT=3003" \
+            --set-env-vars="FIRESTORE_PROJECT_ID=${{ env.PROJECT_ID }},NODE_ENV=production" \
             --project=${{ env.PROJECT_ID }}
       
       # 8. Get service URL

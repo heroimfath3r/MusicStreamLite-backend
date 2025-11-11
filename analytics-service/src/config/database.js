@@ -20,6 +20,7 @@ export const initFirestore = () => {
 
     const config = {
       projectId: process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite',
+      databaseId: 'musicstreamnosql',
     };
 
     console.log(`   Project ID: ${config.projectId}`);

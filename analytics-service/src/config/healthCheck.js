@@ -55,6 +55,7 @@ export async function runHealthCheck() {
     console.error('   Stack:', error.stack);
     console.error('   Code:', error.code);
 
+    
     return {
       ok: false,
       message: error.message,

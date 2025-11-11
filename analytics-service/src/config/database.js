@@ -10,34 +10,67 @@ let firestoreInstance = null;
  * Inicializa la conexión a Firestore
  */
 export const initFirestore = () => {
-  if (firestoreInstance) return firestoreInstance;
+  if (firestoreInstance) {
+    console.log('♻️  Reutilizando instancia existente de Firestore');
+    return firestoreInstance;
+  }
 
   try {
+    console.log('🔧 Configurando Firestore...');
+
     const config = {
       projectId: process.env.FIRESTORE_PROJECT_ID || process.env.PROJECT_ID || 'musicstreamlite',
     };
 
-    // 🔑 Local o Service Account
-    // Solo usar keyFilename si existe Y si estamos en local
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.NODE_ENV !== 'production') {
-  config.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-} else {
-  console.log('🔐 Usando credenciales predeterminadas del entorno (Cloud Run / ADC)');
-}
+    console.log(`   Project ID: ${config.projectId}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'configurado' : 'no configurado'}`);
 
-    // 🧪 Emulador
+    // 🔑 Configuración de credenciales
+    // Estrategia:
+    // 1. Si existe GOOGLE_APPLICATION_CREDENTIALS y NO estamos en producción → usar keyFilename
+    // 2. Si estamos en producción O no hay GOOGLE_APPLICATION_CREDENTIALS → usar ADC (Application Default Credentials)
+    // 3. El emulador siempre tiene prioridad
+
+    // 🧪 Verificar si estamos usando el emulador
     if (process.env.FIRESTORE_EMULATOR_HOST) {
-      console.log(`🧪 Usando Firestore Emulator en ${process.env.FIRESTORE_EMULATOR_HOST}`);
+      console.log(`🧪 Modo EMULADOR detectado: ${process.env.FIRESTORE_EMULATOR_HOST}`);
+      console.log('   No se usarán credenciales (emulador no las requiere)');
       process.env.FIRESTORE_PROJECT_ID = config.projectId;
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.NODE_ENV !== 'production') {
+      // Desarrollo local con service account key
+      config.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      console.log(`🔑 Usando archivo de credenciales: ${config.keyFilename}`);
+    } else {
+      // Producción o entorno sin credenciales explícitas
+      console.log('🔐 Usando Application Default Credentials (ADC)');
+      console.log('   En Cloud Run, esto usa la identidad del servicio automáticamente');
+      console.log('   Asegúrate de que la cuenta de servicio tenga los permisos necesarios:');
+      console.log('   - roles/datastore.user (para Firestore)');
     }
 
-    console.log(`📊 Inicializando Firestore para ${config.projectId} (${process.env.NODE_ENV})`);
+    console.log(`📊 Inicializando Firestore para proyecto: ${config.projectId}`);
     firestoreInstance = new Firestore(config);
 
     console.log('✅ Firestore inicializado correctamente');
+    console.log('   Settings:', {
+      projectId: config.projectId,
+      emulator: !!process.env.FIRESTORE_EMULATOR_HOST,
+      usingKeyFile: !!config.keyFilename
+    });
+
     return firestoreInstance;
   } catch (error) {
-    console.error('❌ Error al inicializar Firestore:', error);
+    console.error('❌ Error al inicializar Firestore:');
+    console.error('   Mensaje:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Stack:', error.stack);
+    console.error('');
+    console.error('💡 Troubleshooting:');
+    console.error('   1. Verifica que FIRESTORE_PROJECT_ID esté configurado correctamente');
+    console.error('   2. En local: verifica que GOOGLE_APPLICATION_CREDENTIALS apunte a un archivo válido');
+    console.error('   3. En Cloud Run: verifica que la cuenta de servicio tenga permisos de Firestore');
+    console.error('   4. Verifica que el proyecto de Firebase/GCP esté activo');
     throw error;
   }
 };

@@ -14,7 +14,7 @@ steps:
       - '-t'
       - 'gcr.io/$PROJECT_ID/analytics-service:latest'
       - '-f'
-      - 'Dockerfile.prod'
+      - 'Dockerfile'
       - '.'
     dir: 'backend/analytics-service'
 
@@ -69,13 +69,17 @@ steps:
       - '--timeout=300'
       - '--concurrency=80'
       # Variables de entorno públicas
-      - '--set-env-vars=NODE_ENV=production,PORT=8080,LOG_LEVEL=info'
-      # Secrets desde Secret Manager (Firestore credentials)
-      - '--set-secrets=FIRESTORE_PROJECT_ID=firestore-project-id:latest,GOOGLE_APPLICATION_CREDENTIALS=/secrets/firestore-key'
+      # IMPORTANTE: En Cloud Run, NO se debe configurar GOOGLE_APPLICATION_CREDENTIALS
+      # cuando se usa la identidad del servicio (service account). Cloud Run automáticamente
+      # usa Application Default Credentials (ADC) con la cuenta de servicio especificada.
+      - '--set-env-vars=NODE_ENV=production,PORT=8080,LOG_LEVEL=info,FIRESTORE_PROJECT_ID=$PROJECT_ID'
       # VPC para comunicación privada
       - '--vpc-connector=projects/$PROJECT_ID/locations/europe-west1/connectors/musicstream-connector'
       - '--vpc-egress=all-traffic'
       # Service Account con acceso a Firestore
+      # IMPORTANTE: Esta cuenta de servicio debe tener el rol "roles/datastore.user" para Firestore
+      # Para verificar: gcloud projects get-iam-policy $PROJECT_ID --flatten="bindings[].members" --filter="bindings.members:serviceAccount:analytics-service@$PROJECT_ID.iam.gserviceaccount.com"
+      # Para asignar: gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:analytics-service@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/datastore.user"
       - '--service-account=analytics-service@$PROJECT_ID.iam.gserviceaccount.com'
     waitFor: ['push-image', 'scan-image']
 

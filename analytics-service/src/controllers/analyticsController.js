@@ -5,16 +5,28 @@ import { runHealthCheck } from '../config/healthCheck.js';
 
 // Track song play
 export const trackPlay = async (req, res) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
   try {
+    console.log(`[${requestId}] 🎵 Iniciando trackPlay`);
+    console.log(`[${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+
     const { songId, userId, duration = 0, timestamp = new Date() } = req.body;
 
     // Validate required fields
     if (!songId) {
+      console.error(`[${requestId}] ❌ Validación fallida: songId es requerido`);
       return res.status(400).json({ error: 'songId is required' });
     }
 
     const durationPlayed = parseInt(duration) || 0;
     const playTimestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
+
+    console.log(`[${requestId}] Datos procesados:`);
+    console.log(`[${requestId}]   - songId: ${songId}`);
+    console.log(`[${requestId}]   - userId: ${userId || 'anonymous'}`);
+    console.log(`[${requestId}]   - duration: ${durationPlayed}s`);
+    console.log(`[${requestId}]   - timestamp: ${playTimestamp.toISOString()}`);
 
     // Prepare event data for song_plays collection
     const playEventData = {
@@ -25,10 +37,12 @@ export const trackPlay = async (req, res) => {
     };
 
     // Use batch write for atomicity (alternative to transaction for independent writes)
+    console.log(`[${requestId}] 📝 Creando batch write...`);
     const batch = firestore.batch();
 
     // 1. Add event to song_plays collection
     const playRef = firestore.collection('song_plays').doc();
+    console.log(`[${requestId}] 📊 Agregando evento a colección 'song_plays' (doc: ${playRef.id})`);
     batch.set(playRef, playEventData);
 
     // 2. Update user_song_stats if userId is present (not anonymous)
@@ -36,10 +50,13 @@ export const trackPlay = async (req, res) => {
       const statDocId = `${userId}_${songId}`;
       const statRef = firestore.collection('user_song_stats').doc(statDocId);
 
+      console.log(`[${requestId}] 📈 Verificando estadísticas de usuario (doc: ${statDocId})...`);
+
       // Get the document to check if it exists
       const statDoc = await statRef.get();
 
       if (statDoc.exists) {
+        console.log(`[${requestId}] ✏️  Actualizando estadísticas existentes`);
         // Update existing stats using FieldValue.increment()
         batch.update(statRef, {
           play_count: firestore.FieldValue.increment(1),
@@ -47,6 +64,7 @@ export const trackPlay = async (req, res) => {
           last_played: playTimestamp
         });
       } else {
+        console.log(`[${requestId}] ✨ Creando nuevas estadísticas de usuario`);
         // Create new stats document
         batch.set(statRef, {
           userId,
@@ -56,20 +74,27 @@ export const trackPlay = async (req, res) => {
           last_played: playTimestamp
         });
       }
+    } else {
+      console.log(`[${requestId}] 👤 Reproducción anónima - no se actualizan estadísticas de usuario`);
     }
 
     // Commit the batch
+    console.log(`[${requestId}] 💾 Ejecutando batch commit...`);
     await batch.commit();
+    console.log(`[${requestId}] ✅ Batch commit exitoso`);
 
     // Update real-time analytics (async, not critical for response)
+    console.log(`[${requestId}] 🔄 Disparando actualizaciones asíncronas...`);
     updateSongAnalytics(songId).catch(err =>
-      console.error('Error updating song analytics:', err)
+      console.error(`[${requestId}] ❌ Error updating song analytics:`, err.message, err.stack)
     );
     if (userId && userId !== 'anonymous') {
       updateUserAnalytics(userId, songId).catch(err =>
-        console.error('Error updating user analytics:', err)
+        console.error(`[${requestId}] ❌ Error updating user analytics:`, err.message, err.stack)
       );
     }
+
+    console.log(`[${requestId}] ✅ trackPlay completado exitosamente (playId: ${playRef.id})`);
 
     res.status(201).json({
       success: true,
@@ -78,8 +103,17 @@ export const trackPlay = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error tracking play:', error);
-    res.status(500).json({ error: 'Failed to track play' });
+    console.error(`[${requestId}] ❌ ERROR CRÍTICO en trackPlay:`);
+    console.error(`[${requestId}]    Mensaje:`, error.message);
+    console.error(`[${requestId}]    Stack:`, error.stack);
+    console.error(`[${requestId}]    Code:`, error.code);
+    console.error(`[${requestId}]    Details:`, error.details);
+
+    res.status(500).json({
+      error: 'Failed to track play',
+      message: error.message,
+      code: error.code
+    });
   }
 };
 
@@ -110,13 +144,18 @@ export const getSongAnalytics = async (req, res) => {
 // Get user listening history
 export const getUserHistory = async (req, res) => {
   try {
+    console.log('📜 Obteniendo historial de usuario...');
     const { userId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
     if (!userId) {
+      console.error('❌ Validación fallida: userId es requerido');
       return res.status(400).json({ error: 'userId is required' });
     }
 
+    console.log(`   Usuario: ${userId}, Limit: ${limit}, Offset: ${offset}`);
+
+    console.log('   Consultando colección song_plays...');
     const historySnapshot = await firestore
       .collection('song_plays')
       .where('userId', '==', userId)
@@ -133,11 +172,16 @@ export const getUserHistory = async (req, res) => {
       });
     });
 
+    console.log(`   Encontrados ${history.length} registros de reproducción`);
+
     // Get total count for pagination
+    console.log('   Obteniendo conteo total...');
     const countSnapshot = await firestore
       .collection('song_plays')
       .where('userId', '==', userId)
       .get();
+
+    console.log(`✅ Historial obtenido: ${countSnapshot.size} reproducciones totales`);
 
     res.json({
       userId,
@@ -150,8 +194,15 @@ export const getUserHistory = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting user history:', error);
-    res.status(500).json({ error: 'Failed to get user history' });
+    console.error('❌ Error getting user history:');
+    console.error('   Mensaje:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Stack:', error.stack);
+    res.status(500).json({
+      error: 'Failed to get user history',
+      message: error.message,
+      code: error.code
+    });
   }
 };
 
@@ -257,12 +308,14 @@ export const recordEngagement = async (req, res) => {
 // Update song analytics in real-time
 async function updateSongAnalytics(songId) {
   try {
+    console.log(`[Analytics] 📊 Actualizando analytics para canción: ${songId}`);
     const songAnalyticsRef = firestore.collection('song_analytics').doc(songId);
-    
+
     await firestore.runTransaction(async (transaction) => {
       const doc = await transaction.get(songAnalyticsRef);
-      
+
       if (!doc.exists) {
+        console.log(`[Analytics] ✨ Creando nuevo documento de analytics para: ${songId}`);
         // Create new analytics document
         transaction.set(songAnalyticsRef, {
           songId,
@@ -274,6 +327,7 @@ async function updateSongAnalytics(songId) {
           updatedAt: new Date()
         });
       } else {
+        console.log(`[Analytics] ✏️  Actualizando analytics existente para: ${songId}`);
         // Update existing analytics
         const data = doc.data();
         transaction.update(songAnalyticsRef, {
@@ -285,16 +339,23 @@ async function updateSongAnalytics(songId) {
       }
     });
 
+    console.log(`[Analytics] ✅ Analytics actualizado exitosamente para: ${songId}`);
+
   } catch (error) {
-    console.error('Error updating song analytics:', error);
+    console.error(`[Analytics] ❌ Error updating song analytics para ${songId}:`);
+    console.error(`[Analytics]    Mensaje:`, error.message);
+    console.error(`[Analytics]    Code:`, error.code);
+    console.error(`[Analytics]    Stack:`, error.stack);
+    throw error;
   }
 }
 
 // Update user analytics
 export async function updateUserAnalytics(userId, songId) {
   try {
+    console.log(`[UserAnalytics] 👤 Actualizando analytics para usuario: ${userId}`);
     const userAnalyticsRef = firestore.collection('user_analytics').doc(userId);
-    
+
     await userAnalyticsRef.set({
       userId,
       lastActive: new Date(),
@@ -302,8 +363,14 @@ export async function updateUserAnalytics(userId, songId) {
       updatedAt: new Date()
     }, { merge: true });
 
+    console.log(`[UserAnalytics] ✅ Analytics de usuario actualizado para: ${userId}`);
+
   } catch (error) {
-    console.error('Error updating user analytics:', error);
+    console.error(`[UserAnalytics] ❌ Error updating user analytics para ${userId}:`);
+    console.error(`[UserAnalytics]    Mensaje:`, error.message);
+    console.error(`[UserAnalytics]    Code:`, error.code);
+    console.error(`[UserAnalytics]    Stack:`, error.stack);
+    throw error;
   }
 }
 

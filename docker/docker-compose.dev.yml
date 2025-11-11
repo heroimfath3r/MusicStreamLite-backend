@@ -155,7 +155,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - FIRESTORE_PROJECT_ID=musicstream-dev
+      - GOOGLE_CLOUD_PROJECT=musicstream-dev
       - PORT=8080
     networks:
       - musicstream-network

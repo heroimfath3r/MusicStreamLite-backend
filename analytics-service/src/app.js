@@ -73,7 +73,7 @@ async function startServer() {
   try {
     console.log('🚀 Iniciando Analytics Service...');
     console.log('📝 Environment:', process.env.NODE_ENV || 'development');
-    console.log('📦 Project ID:', process.env.FIRESTORE_PROJECT_ID || 'musicstreamlite');
+    console.log('📦 Project ID:', process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite');
 
     // Inicializar Firestore antes de iniciar el servidor
     console.log('🔥 Inicializando conexión a Firestore...');

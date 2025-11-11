@@ -72,7 +72,7 @@ steps:
       # IMPORTANTE: En Cloud Run, NO se debe configurar GOOGLE_APPLICATION_CREDENTIALS
       # cuando se usa la identidad del servicio (service account). Cloud Run automáticamente
       # usa Application Default Credentials (ADC) con la cuenta de servicio especificada.
-      - '--set-env-vars=NODE_ENV=production,PORT=8080,LOG_LEVEL=info,FIRESTORE_PROJECT_ID=$PROJECT_ID'
+      - '--set-env-vars=NODE_ENV=production,PORT=8080,LOG_LEVEL=info,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
       # VPC para comunicación privada
       - '--vpc-connector=projects/$PROJECT_ID/locations/europe-west1/connectors/musicstream-connector'
       - '--vpc-egress=all-traffic'

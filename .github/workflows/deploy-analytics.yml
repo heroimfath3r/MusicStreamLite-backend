@@ -72,7 +72,7 @@ jobs:
             --memory=512Mi \
             --timeout=300s \
             --service-account=${{ env.SERVICE_ACCOUNT }} \
-            --set-env-vars="FIRESTORE_PROJECT_ID=${{ env.PROJECT_ID }},NODE_ENV=production" \
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},NODE_ENV=production" \
             --project=${{ env.PROJECT_ID }}
       
       # 8. Get service URL

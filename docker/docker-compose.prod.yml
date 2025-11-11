@@ -173,7 +173,7 @@ services:
       - PORT=3003
       - LOG_LEVEL=info
       - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json
-      - FIRESTORE_PROJECT_ID=${FIRESTORE_PROJECT_ID}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://musicstream.example.com}
     volumes:
       - ./secrets/service-account.json:/app/service-account.json:ro

@@ -5,7 +5,7 @@ export async function runHealthCheck() {
   try {
     console.log('🔥 Ejecutando health check de Firestore...');
     console.log('   Environment:', process.env.NODE_ENV || 'unknown');
-    console.log('   Project ID:', process.env.FIRESTORE_PROJECT_ID || 'musicstreamlite');
+    console.log('   Project ID:', process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite');
 
     const db = getFirestore();
     console.log('   Firestore instance obtenida correctamente');
@@ -20,7 +20,7 @@ export async function runHealthCheck() {
       timestamp: new Date().toISOString(),
       status: 'ok',
       environment: process.env.NODE_ENV || 'unknown',
-      projectId: process.env.FIRESTORE_PROJECT_ID || 'musicstreamlite',
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite',
       checkId: healthCheckId
     });
 
@@ -47,7 +47,7 @@ export async function runHealthCheck() {
       ok: true,
       message: 'Firestore write/read/delete OK',
       collection: 'analytics',
-      projectId: process.env.FIRESTORE_PROJECT_ID || 'musicstreamlite'
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite'
     };
   } catch (error) {
     console.error('❌ Error en health check de Firestore:');

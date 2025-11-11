@@ -19,7 +19,7 @@ export const initFirestore = () => {
     console.log('🔧 Configurando Firestore...');
 
     const config = {
-      projectId: process.env.FIRESTORE_PROJECT_ID || process.env.PROJECT_ID || 'musicstreamlite',
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.PROJECT_ID || 'musicstreamlite',
     };
 
     console.log(`   Project ID: ${config.projectId}`);
@@ -36,7 +36,7 @@ export const initFirestore = () => {
     if (process.env.FIRESTORE_EMULATOR_HOST) {
       console.log(`🧪 Modo EMULADOR detectado: ${process.env.FIRESTORE_EMULATOR_HOST}`);
       console.log('   No se usarán credenciales (emulador no las requiere)');
-      process.env.FIRESTORE_PROJECT_ID = config.projectId;
+      process.env.GOOGLE_CLOUD_PROJECT = config.projectId;
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.NODE_ENV !== 'production') {
       // Desarrollo local con service account key
       config.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -67,7 +67,7 @@ export const initFirestore = () => {
     console.error('   Stack:', error.stack);
     console.error('');
     console.error('💡 Troubleshooting:');
-    console.error('   1. Verifica que FIRESTORE_PROJECT_ID esté configurado correctamente');
+    console.error('   1. Verifica que GOOGLE_CLOUD_PROJECT esté configurado correctamente');
     console.error('   2. En local: verifica que GOOGLE_APPLICATION_CREDENTIALS apunte a un archivo válido');
     console.error('   3. En Cloud Run: verifica que la cuenta de servicio tenga permisos de Firestore');
     console.error('   4. Verifica que el proyecto de Firebase/GCP esté activo');

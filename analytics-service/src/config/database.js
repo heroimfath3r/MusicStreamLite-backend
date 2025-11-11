@@ -19,7 +19,7 @@ export const initFirestore = () => {
     console.log('🔧 Configurando Firestore...');
 
     const config = {
-      projectId: process.env.GOOGLE_CLOUD_PROJECT || process.env.PROJECT_ID || 'musicstreamlite',
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'musicstreamlite',
     };
 
     console.log(`   Project ID: ${config.projectId}`);

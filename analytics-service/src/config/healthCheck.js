@@ -1,3 +1,4 @@
+// analytics-service/src/config/healthCheck.js
 import { getFirestore } from './database.js';
 
 export async function runHealthCheck() {

@@ -1,5 +1,7 @@
 // analytics-service/src/controllers/analyticsController.js
 import { analyticsDB, firestore } from '../config/database.js';
+import { runHealthCheck } from '../config/healthCheck.js';
+
 
 // Track song play
 export const trackPlay = async (req, res) => {

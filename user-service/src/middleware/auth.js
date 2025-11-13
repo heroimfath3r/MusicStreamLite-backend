@@ -32,6 +32,7 @@ export const authenticateToken = (req, res, next) => {
         email: decoded.email
       };
 
+      
       next();
     });
 

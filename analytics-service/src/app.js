@@ -1,29 +1,53 @@
-// analytics-service/src/app.js
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import dotenv from 'dotenv';
+import morgan from 'morgan';
 import analyticsRoutes from './routes/analytics.js';
 import { initFirestore, getFirestore } from './config/database.js';
 import { runHealthCheck } from './config/healthCheck.js';
 
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// ============================================================
+// CORS Configuration
+// ============================================================
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://musicstream-frontend-586011919703.us-central1.run.app'
+];
+
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+app.use(morgan('dev'));
 
-// Agregar logging de requests
+// ============================================================
+// Logging middleware
+// ============================================================
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
+// ============================================================
 // Routes
+// ============================================================
 app.use('/api/analytics', analyticsRoutes);
 
+// ============================================================
 // Health check mejorado con validación de Firestore
+// ============================================================
 app.get('/health', async (req, res) => {
   try {
     const firestoreHealth = await runHealthCheck();
@@ -54,7 +78,16 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Error handling
+// ============================================================
+// 404 handler
+// ============================================================
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// ============================================================
+// Error handler
+// ============================================================
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({
@@ -63,12 +96,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// ============================================================
+// Graceful shutdown
+// ============================================================
+process.on('SIGINT', async () => {
+  console.log('🛑 Cerrando Analytics Service...');
+  process.exit(0);
 });
 
+// ============================================================
 // Función para inicializar la aplicación
+// ============================================================
 async function startServer() {
   try {
     console.log('🚀 Iniciando Analytics Service...');
@@ -93,11 +131,11 @@ async function startServer() {
     }
 
     // Iniciar servidor
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('='.repeat(60));
       console.log(`📊 Analytics Service corriendo en puerto ${PORT}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📈 Analytics API: http://localhost:${PORT}/api/analytics`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`📈 Analytics API: http://0.0.0.0:${PORT}/api/analytics`);
       console.log('='.repeat(60));
     });
 
@@ -108,7 +146,9 @@ async function startServer() {
   }
 }
 
+// ============================================================
 // Iniciar el servidor
+// ============================================================
 startServer();
 
 export default app;

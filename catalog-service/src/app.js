@@ -11,21 +11,33 @@ import routes from './routes/index.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+
+// 💡 MEJORA: Definimos el puerto aquí. Cloud Run inyectará 'PORT' (ej: 8080 o 8024).
+// Si no lo inyecta (entorno local), usa 8080.
+const PORT = process.env.PORT || 8080; 
 
 // ============================================================
 // CORS Configuration
 // ============================================================
+// Es crucial que esta lista contenga la URL exacta del frontend que hace la solicitud.
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
-  'https://musicstream-frontend-586011919703.us-central1.run.app'
+  // Asegúrate de que esta URL sea la correcta y NO la que dio 500
+  'https://musicstream-frontend-586011919703.us-central1.run.app' 
 ];
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Permite solicitudes sin origen (como Postman o peticiones del mismo servidor)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -46,7 +58,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     service: 'catalog-service',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    port_used: PORT // Añadido para debugging
   });
 });
 
@@ -58,13 +71,13 @@ app.use('*', (req, res) => {
 });
 
 // ============================================================
-// Error handler
+// Error handler (Middleware de 4 argumentos)
 // ============================================================
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
+  console.error('🔴 General Error Handler:', err.stack);
+  res.status(err.status || 500).json({
     error: 'Internal server error',
-    message: err.message
+    message: err.message || 'Unknown server error'
   });
 });
 
@@ -72,19 +85,30 @@ app.use((err, req, res, next) => {
 // Graceful shutdown
 // ============================================================
 process.on('SIGINT', () => {
-  console.log('🛑 Cerrando Catalog Service...');
+  console.log('🛑 Cerrando Catalog Service (SIGINT)...');
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  console.log('🛑 Cerrando Catalog Service (SIGTERM)...');
   process.exit(0);
 });
 
+
 // ============================================================
-// Start server
+// Start server (Aseguramos que el servidor inicie correctamente)
 // ============================================================
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('='.repeat(60));
-  console.log(`🎵 Catalog Service running on port ${PORT}`);
-  console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`📚 API: http://0.0.0.0:${PORT}/api`);
-  console.log('='.repeat(60));
-});
+try {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('='.repeat(60));
+    console.log(`🎵 Catalog Service running on port ${PORT}`);
+    console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+    console.log(`📚 API: http://0.0.0.0:${PORT}/api`);
+    console.log('='.repeat(60));
+  });
+} catch (error) {
+  console.error('❌ FATAL: Failed to start server:', error);
+  process.exit(1);
+}
+
 
 export default app;

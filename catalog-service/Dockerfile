@@ -25,7 +25,6 @@ COPY --from=builder /app /app
 
 # Establecer variable de entorno para producción
 ENV NODE_ENV=production
-ENV PORT=8080
 
 # Instalar dotenv para leer variables
 RUN npm install dotenv

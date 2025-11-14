@@ -5,7 +5,6 @@ import {
   getSongAnalytics,
   getUserHistory,
   getTrendingSongs,
-  getUserTopSongs,
   getAnalyticsHealth
 } from '../controllers/analyticsController.js';
 
@@ -21,6 +20,5 @@ router.post('/plays', trackPlay);
 router.get('/songs/:songId', getSongAnalytics);
 router.get('/trending', getTrendingSongs);
 router.get('/users/:userId/history', getUserHistory);
-router.get('/users/:userId/top-songs', getUserTopSongs);
 
 export default router;

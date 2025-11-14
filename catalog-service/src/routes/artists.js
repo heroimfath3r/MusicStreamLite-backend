@@ -1,197 +1,164 @@
-// backend/user-service/src/routes/artists.js
+// backend/catalog-service/src/routes/artists.js
 import express from 'express';
+import db from '../db.js'; // Conexión a PostgreSQL
+
 const router = express.Router();
 
-// URL base de la API de artistas desde variables de entorno
-const ARTISTS_API_URL = process.env.ARTISTS_API_URL || 'http://localhost:3002/api/artists';
-
-/**
- * GET /artists
- * Obtiene todos los artistas
- */
+/* ============================================================
+   GET /artists  → Obtener todos los artistas
+   ============================================================ */
 router.get('/', async (req, res) => {
   try {
-    const response = await fetch(ARTISTS_API_URL);
+    const result = await db.query('SELECT * FROM artists ORDER BY id ASC');
 
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    const artists = await response.json();
-    res.status(200).json({
+    res.json({
       success: true,
-      data: artists
+      count: result.rowCount,
+      data: result.rows
     });
   } catch (error) {
-    console.error('Error fetching artists:', error.message);
+    console.error('Error getting artists:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener los artistas',
-      error: error.message
+      message: 'Error al obtener artistas'
     });
   }
 });
 
-/**
- * GET /artists/:id
- * Obtiene un artista específico por ID
- */
+/* ============================================================
+   GET /artists/:id  → Obtener un artista por ID
+   ============================================================ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await fetch(`${ARTISTS_API_URL}/${id}`);
 
-    if (response.status === 404) {
+    const result = await db.query(
+      'SELECT * FROM artists WHERE id = $1',
+      [id]
+    );
+
+    if (result.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: 'Artista no encontrado'
       });
     }
 
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    const artist = await response.json();
-    res.status(200).json({
+    res.json({
       success: true,
-      data: artist
+      data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error fetching artist:', error.message);
+    console.error('Error getting artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener el artista',
-      error: error.message
+      message: 'Error al obtener artista'
     });
   }
 });
 
-/**
- * POST /artists
- * Crea un nuevo artista
- * Body esperado: { name, bio, image_url, etc. }
- */
+/* ============================================================
+   POST /artists  → Crear un nuevo artista
+   ============================================================ */
 router.post('/', async (req, res) => {
   try {
-    const artistData = req.body;
+    const { name, bio, image_url } = req.body;
 
-    const response = await fetch(ARTISTS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(artistData)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return res.status(response.status).json({
+    if (!name) {
+      return res.status(400).json({
         success: false,
-        message: 'Error al crear el artista',
-        error: errorData.message || 'Error desconocido'
+        message: 'El nombre del artista es requerido'
       });
     }
 
-    const newArtist = await response.json();
+    const result = await db.query(
+      `INSERT INTO artists (name, bio, image_url)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [name, bio || null, image_url || null]
+    );
+
     res.status(201).json({
       success: true,
       message: 'Artista creado exitosamente',
-      data: newArtist
+      data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error creating artist:', error.message);
+    console.error('Error creating artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al crear el artista',
-      error: error.message
+      message: 'Error al crear artista'
     });
   }
 });
 
-/**
- * PUT /artists/:id
- * Actualiza un artista existente
- * Body esperado: campos a actualizar
- */
+/* ============================================================
+   PUT /artists/:id  → Actualizar un artista existente
+   ============================================================ */
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const artistData = req.body;
+    const { name, bio, image_url } = req.body;
 
-    const response = await fetch(`${ARTISTS_API_URL}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(artistData)
-    });
+    const result = await db.query(
+      `UPDATE artists 
+       SET name = COALESCE($1, name),
+           bio = COALESCE($2, bio),
+           image_url = COALESCE($3, image_url)
+       WHERE id = $4
+       RETURNING *`,
+      [name, bio, image_url, id]
+    );
 
-    if (response.status === 404) {
+    if (result.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: 'Artista no encontrado'
       });
     }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return res.status(response.status).json({
-        success: false,
-        message: 'Error al actualizar el artista',
-        error: errorData.message || 'Error desconocido'
-      });
-    }
-
-    const updatedArtist = await response.json();
-    res.status(200).json({
+    res.json({
       success: true,
       message: 'Artista actualizado exitosamente',
-      data: updatedArtist
+      data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error updating artist:', error.message);
+    console.error('Error updating artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al actualizar el artista',
-      error: error.message
+      message: 'Error al actualizar artista'
     });
   }
 });
 
-/**
- * DELETE /artists/:id
- * Elimina un artista por ID
- */
+/* ============================================================
+   DELETE /artists/:id  → Eliminar artista
+   ============================================================ */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const response = await fetch(`${ARTISTS_API_URL}/${id}`, {
-      method: 'DELETE'
-    });
+    const result = await db.query(
+      'DELETE FROM artists WHERE id = $1 RETURNING id',
+      [id]
+    );
 
-    if (response.status === 404) {
+    if (result.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: 'Artista no encontrado'
       });
     }
 
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    res.status(200).json({
+    res.json({
       success: true,
-      message: 'Artista eliminado exitosamente'
+      message: 'Artista eliminado correctamente'
     });
   } catch (error) {
-    console.error('Error deleting artist:', error.message);
+    console.error('Error deleting artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al eliminar el artista',
-      error: error.message
+      message: 'Error al eliminar artista'
     });
   }
 });

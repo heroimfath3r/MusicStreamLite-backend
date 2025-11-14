@@ -41,12 +41,12 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Cloud Run requires port 8080
-EXPOSE 5234
-ENV PORT=5234
+EXPOSE 8080
+ENV PORT=8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://0.0.0.0:5234/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://0.0.0.0:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application
 CMD ["npm", "start"]

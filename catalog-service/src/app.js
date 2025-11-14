@@ -12,7 +12,7 @@ dotenv.config();
 
 const app = express();
 
-const PORT = process.env.PORT || 5234; 
+const PORT = process.env.PORT || 8080; 
 
 // ============================================================
 // CORS Configuration

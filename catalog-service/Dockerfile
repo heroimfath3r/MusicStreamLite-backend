@@ -26,7 +26,7 @@ COPY --from=builder /app /app
 ENV NODE_ENV=production
 
 # Exponer puerto (opcional)
-EXPOSE 5234
+EXPOSE 8080
 
 # Comando de inicio
 CMD ["npm", "start"]

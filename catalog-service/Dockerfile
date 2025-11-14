@@ -4,30 +4,29 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copiar archivos de dependencias
+# Copiar dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci
+# Instalar dependencias (incluye dotenv porque está en package.json)
+RUN npm ci --omit=dev
 
 # Copiar código fuente
 COPY . .
 
 # ------------------------------
-# Etapa final (runtime)
+# Imagen final (runtime)
 # ------------------------------
 FROM node:18-alpine
 WORKDIR /app
 
-# Copiar todo desde el builder (incluye node_modules correctos)
+# Copiar node_modules y código
 COPY --from=builder /app /app
 
-# Establecer variable de entorno
+# Cloud Run establece su propio PORT
 ENV NODE_ENV=production
 
-# Exponer puerto para Cloud Run
+# Exponer puerto (opcional)
 EXPOSE 5234
 
 # Comando de inicio
 CMD ["npm", "start"]
-

@@ -12,8 +12,6 @@ dotenv.config();
 
 const app = express();
 
-// 💡 MEJORA: Definimos el puerto aquí. Cloud Run inyectará 'PORT' (ej: 8080 o 8024).
-// Si no lo inyecta (entorno local), usa 8080.
 const PORT = process.env.PORT || 5234; 
 
 // ============================================================

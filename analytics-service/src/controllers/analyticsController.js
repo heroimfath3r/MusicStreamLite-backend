@@ -141,67 +141,106 @@ export const getSongAnalytics = async (req, res) => {
   }
 };
 
-// Get user listening history
+// Get user listening history - ✅ FIXED VERSION
 export const getUserHistory = async (req, res) => {
   try {
-    console.log('📜 Obteniendo historial de usuario...');
     const { userId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+    const limit = parseInt(req.query.limit || '50', 10);
+    const offset = parseInt(req.query.offset || '0', 10);
 
     if (!userId) {
-      console.error('❌ Validación fallida: userId es requerido');
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    console.log(`   Usuario: ${userId}, Limit: ${limit}, Offset: ${offset}`);
+    // ✅ Normalizar tipo: si es numérico convertir a Number
+    const parsedUserId = /^\d+$/.test(String(userId)) ? Number(userId) : userId;
 
-    console.log('   Consultando colección song_plays...');
-    const historySnapshot = await firestore
+    console.log(`📜 Obteniendo historial para usuario: ${parsedUserId} (type: ${typeof parsedUserId})`);
+
+    // Construir query por userId
+    let query = firestore
       .collection('song_plays')
-      .where('userId', '==', userId)
+      .where('userId', '==', parsedUserId)
       .orderBy('timestamp', 'desc')
-      .limit(parseInt(limit))
-      .offset(parseInt(offset))
-      .get();
+      .limit(limit);
+
+    // Aplicar offset si está disponible
+    if (offset > 0 && typeof query.offset === 'function') {
+      query = query.offset(offset);
+    }
+
+    let snapshot = await query.get();
+
+    // ✅ Fallback: si no hay resultados, intentar con 'user_id' (compatibilidad)
+    if (snapshot.empty) {
+      console.log('⚠️  No encontrados con userId, intentando user_id...');
+      let altQuery = firestore
+        .collection('song_plays')
+        .where('user_id', '==', parsedUserId)
+        .orderBy('timestamp', 'desc')
+        .limit(limit);
+
+      if (offset > 0 && typeof altQuery.offset === 'function') {
+        altQuery = altQuery.offset(offset);
+      }
+
+      const altSnapshot = await altQuery.get();
+      if (!altSnapshot.empty) {
+        snapshot = altSnapshot;
+        console.log('✅ Encontrados con user_id');
+      }
+    }
 
     const history = [];
-    historySnapshot.forEach(doc => {
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      // ✅ Normalizar timestamp: si es Firestore Timestamp convertir a ISO
+      let ts = data.timestamp;
+      if (ts && typeof ts.toDate === 'function') {
+        ts = ts.toDate().toISOString();
+      } else if (ts instanceof Date) {
+        ts = ts.toISOString();
+      }
+
       history.push({
         id: doc.id,
-        ...doc.data()
+        ...data,
+        timestamp: ts  // ✅ Retornar como ISO string
       });
     });
 
-    console.log(`   Encontrados ${history.length} registros de reproducción`);
+    console.log(`✅ Historial obtenido: ${history.length} reproducciones`);
 
-    // Get total count for pagination
-    console.log('   Obteniendo conteo total...');
-    const countSnapshot = await firestore
+    // Obtener conteo total para paginación
+    let countQuery = firestore
       .collection('song_plays')
-      .where('userId', '==', userId)
-      .get();
+      .where('userId', '==', parsedUserId);
 
-    console.log(`✅ Historial obtenido: ${countSnapshot.size} reproducciones totales`);
+    let countSnapshot = await countQuery.get();
+
+    if (countSnapshot.empty) {
+      countQuery = firestore
+        .collection('song_plays')
+        .where('user_id', '==', parsedUserId);
+      countSnapshot = await countQuery.get();
+    }
 
     res.json({
-      userId,
+      userId: parsedUserId,
       history,
       pagination: {
         total: countSnapshot.size,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
+        limit,
+        offset
       }
     });
 
   } catch (error) {
-    console.error('❌ Error getting user history:');
-    console.error('   Mensaje:', error.message);
-    console.error('   Code:', error.code);
-    console.error('   Stack:', error.stack);
+    console.error('❌ Error getting user history:', error.message);
     res.status(500).json({
       error: 'Failed to get user history',
-      message: error.message,
-      code: error.code
+      message: error.message
     });
   }
 };

@@ -59,8 +59,8 @@ export const trackPlay = async (req, res) => {
         console.log(`[${requestId}] ✏️  Actualizando estadísticas existentes`);
         // Update existing stats using FieldValue.increment()
         batch.update(statRef, {
-          play_count: firestore.increment(1),
-          total_time_played: firestore.increment(durationPlayed),
+          play_count: FieldValue.increment(1),
+          total_time_played: FieldValue.increment(durationPlayed),
           last_played: playTimestamp
         });
       } else {
@@ -359,7 +359,7 @@ export async function updateUserAnalytics(userId, songId) {
     await userAnalyticsRef.set({
       userId,
       lastActive: new Date(),
-      totalSongsPlayed: firestore.increment(1),
+      totalSongsPlayed: FieldValue.increment(1),
       updatedAt: new Date()
     }, { merge: true });
 
@@ -615,7 +615,7 @@ async function updateEngagementAnalytics(type, targetId, userId) {
     await engagementRef.set({
       type,
       targetId,
-      count: firestore.increment(1),
+      count: FieldValue.increment(1),
       lastEngaged: new Date(),
       updatedAt: new Date()
     }, { merge: true });
@@ -625,7 +625,7 @@ async function updateEngagementAnalytics(type, targetId, userId) {
       const userEngagementRef = firestore.collection('user_engagement_profiles').doc(userId);
       await userEngagementRef.set({
         userId,
-        [type]: firestore.increment(1),
+        [type]: FieldValue.increment(1),
         lastEngagement: new Date(),
         updatedAt: new Date()
       }, { merge: true });

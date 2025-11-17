@@ -70,7 +70,10 @@ export const getStreamUrl = async (req, res, next) => {
 
     // Obtener el path relativo (después de "bucket-name/")
     const pathStartIndex = bucketIndex + bucketName.length + 1;
-    const fileName = audioFileUrl.substring(pathStartIndex);
+    let fileName = audioFileUrl.substring(pathStartIndex);
+
+    // ✅ DECODIFICAR URLs encoded (%20 → espacio, etc)
+    fileName = decodeURIComponent(fileName);
 
     console.log(`🎵 [streamController] Obteniendo archivo: ${fileName}`);
 

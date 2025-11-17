@@ -11,7 +11,8 @@ import {
   getFavorites,
   recordPlay,
   getPlayHistory,
-  getUserStats
+  getUserStats,
+  changePassword
 } from '../controllers/userController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -23,6 +24,9 @@ const router = express.Router();
 
 // 👉 Registrar nuevo usuario
 router.post('/register', register);
+
+// RUTA: cambiar contraseña (protegida)
+router.post('/change-password', authenticateToken, changePassword);
 
 // 👉 Login de usuario
 router.post('/login', login);

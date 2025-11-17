@@ -773,3 +773,45 @@ export const getUserStats = async (req, res) => {
     sendError(res, 500, 'Internal server error');
   }
 };
+
+// ============================================
+// 🔑 CAMBIAR CONTRASEÑA
+// ============================================
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { userId } = req.user;
+
+    if (!currentPassword || !newPassword) {
+      return sendError(res, 400, 'currentPassword and newPassword are required');
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return sendError(res, 400, 'New password must be at least 6 characters long');
+    }
+
+    const result = await pool.query(
+      'SELECT user_id, password_hash, email FROM users WHERE user_id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) return sendError(res, 404, 'User not found');
+
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return sendError(res, 403, 'Current password is incorrect');
+
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2',
+      [newHash, userId]
+    );
+
+    console.log(`✅ Password changed for user ${user.email} (${userId})`);
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('❌ Change password error:', error);
+    sendError(res, 500, 'Internal server error');
+  }
+};

@@ -6,21 +6,39 @@ import { pool } from '../config/database.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
 const JWT_EXPIRES_IN = '24h';
 const SALT_ROUNDS = 12;
+const JWT_ISSUER = process.env.JWT_ISSUER || null;
+const JWT_AUDIENCE = process.env.JWT_AUDIENCE || null;
 
 // ============================================
 // 🔧 UTILIDADES
 // ============================================
-const generateToken = (user) =>
-  jwt.sign({ userId: user.user_id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+const generateToken = (user) => {
+  const payload = {
+    sub: String(user.user_id),   // estándar → subject
+    userId: user.user_id,        // compatibilidad con microservicios
+    email: user.email
+  };
 
-const sanitizeUser = (user) => {
-  if (!user) return null;
-  const { password_hash, ...safe } = user;
-  return safe;
+  const options = {
+    algorithm: "HS256",
+    expiresIn: JWT_EXPIRES_IN,
+  };
+
+  // Solo agrega `iss` y `aud` si se configuraron
+  if (JWT_ISSUER) options.issuer = JWT_ISSUER;
+  if (JWT_AUDIENCE) options.audience = JWT_AUDIENCE;
+
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
-const sendError = (res, code, message) =>
-  res.status(code).json({ success: false, error: message });
+const sanitizeUser = (user) => {
+  const { password_hash, ...sanitized } = user;
+  return sanitized;
+};
+
+const sendError = (res, status, message) => {
+  res.status(status).json({ success: false, message });
+};
 
 // ============================================
 // 🧱 HU1: REGISTRO DE USUARIO

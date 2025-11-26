@@ -1,0 +1,27 @@
+# ============================================================
+# Dockerfile.dev - User Service (Desarrollo Local)
+# ============================================================
+FROM node:18-alpine
+
+RUN apk add --no-cache bash curl postgresql-client
+
+WORKDIR /app
+
+# Copiar dependencias
+COPY package*.json ./
+
+# Instalar todas las dependencias (incluyendo nodemon)
+RUN npm install
+
+# Copiar código
+COPY . .
+
+# Exponer puerto
+EXPOSE 3002
+
+# Variables de entorno por defecto
+ENV NODE_ENV=development
+ENV PORT=3002
+
+# Hot-reload con nodemon
+CMD ["npm", "run", "dev"]

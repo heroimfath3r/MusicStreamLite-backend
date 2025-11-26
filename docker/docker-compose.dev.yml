@@ -1,25 +1,34 @@
-# C:\Proyectos\MusicStreamLite\docker\docker-compose.dev.yml
+# ============================================================================
+# docker-compose.dev.yml - Entorno de Desarrollo Local Completo
+# ============================================================================
+# Combinación optimizada de tu archivo original + mejoras
+# ============================================================================
 version: '3.8'
 
 services:
   # ==========================================================================
-  # DATABASE
+  # DATABASE - PostgreSQL
   # ==========================================================================
   postgres:
     image: postgres:15-alpine
     container_name: musicstream-postgres
     environment:
-      POSTGRES_DB: musicstream
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: musicstream_db  # ✅ Cambiado para coincidir con tu código
+      POSTGRES_USER: musicstreamdb # ✅ Cambiado para coincidir con tu código
+      POSTGRES_PASSWORD: dev_password_change_in_prod
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     ports:
       - "5432:5432"
     volumes:
+      # Volumen persistente
       - postgres_data:/var/lib/postgresql/data
-      - ./init/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      
+      # 🚀 Scripts de inicialización (ejecutan en orden alfabético)
+      - ./init/01-create-databases.sql:/docker-entrypoint-initdb.d/01-create-databases.sql
+      - ./init/02-create-tables.sql:/docker-entrypoint-initdb.d/02-create-tables.sql
+      - ./init/03-seed-data.sql:/docker-entrypoint-initdb.d/03-seed-data.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d musicstream"]
+      test: ["CMD-SHELL", "pg_isready -U musicstreamdb -d musicstream_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,25 +37,36 @@ services:
       - musicstream-network
 
   # ==========================================================================
-  # BACKEND SERVICES
+  # CATALOG SERVICE
   # ==========================================================================
   catalog-service:
     build:
-      context: ../backend/catalog-service
+      context: ../catalog-service
       dockerfile: Dockerfile.dev
     container_name: musicstream-catalog
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=musicstream
-      - DB_USER=admin
-      - DB_PASSWORD=password
-      - LOG_LEVEL=debug
+      NODE_ENV: development
+      PORT: 3001
+      
+      # Base de datos (conexión directa, sin Cloud SQL socket)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: musicstream_db
+      DB_USER: musicstreamdb
+      DB_PASSWORD: dev_password_change_in_prod
+      
+      # Google Cloud Storage (para desarrollo local, opcional)
+      GCP_PROJECT_ID: musicstreamlite
+      GCS_BUCKET: music-stream-lite-bucket
+      
+      # Logging
+      LOG_LEVEL: debug
     volumes:
-      - ../backend/catalog-service:/app
+      # 🔥 Hot-reload: monta tu código local
+      - ../catalog-service:/app:delegated
+      # Excluye node_modules para evitar conflictos
       - /app/node_modules
     depends_on:
       postgres:
@@ -59,26 +79,40 @@ services:
       start_period: 40s
     networks:
       - musicstream-network
+    command: npm run dev
 
+  # ==========================================================================
+  # USER SERVICE
+  # ==========================================================================
   user-service:
     build:
-      context: ../backend/user-service
+      context: ../user-service
       dockerfile: Dockerfile.dev
     container_name: musicstream-user
     ports:
       - "3002:3002"
     environment:
-      - NODE_ENV=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=musicstream
-      - DB_USER=admin
-      - DB_PASSWORD=password
-      - JWT_SECRET=dev-jwt-secret-key-change-in-production
-      - JWT_EXPIRES_IN=24h
-      - LOG_LEVEL=debug
+      NODE_ENV: development
+      PORT: 3002
+      
+      # Base de datos
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: musicstream_db
+      DB_USER: musicstreamdb
+      DB_PASSWORD: dev_password_change_in_prod
+      
+      # JWT (usa secreto diferente en producción)
+      JWT_SECRET: dev-jwt-secret-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      
+      # CORS
+      CORS_ORIGIN: http://localhost:3000
+      
+      # Logging
+      LOG_LEVEL: debug
     volumes:
-      - ../backend/user-service:/app
+      - ../user-service:/app:delegated
       - /app/node_modules
     depends_on:
       postgres:
@@ -91,24 +125,34 @@ services:
       start_period: 40s
     networks:
       - musicstream-network
+    command: npm run dev
 
+  # ==========================================================================
+  # ANALYTICS SERVICE
+  # ==========================================================================
   analytics-service:
     build:
-      context: ../backend/analytics-service
+      context: ../analytics-service
       dockerfile: Dockerfile.dev
     container_name: musicstream-analytics
     ports:
-      - "3003:3003"
+      - "3003:8080"  # ✅ Puerto externo:interno correcto
     environment:
-      - NODE_ENV=development
-      - PORT=3003
-      - LOG_LEVEL=debug
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      NODE_ENV: development
+      PORT: 8080  # ✅ Puerto interno correcto
+      
+      # Firestore
+      GOOGLE_CLOUD_PROJECT: musicstreamlite
+      # 🔥 Usar emulador de Firestore
+      FIRESTORE_EMULATOR_HOST: firestore:8080
+      
+      # Logging
+      LOG_LEVEL: debug
     volumes:
-      - ../backend/analytics-service:/app
+      - ../analytics-service:/app:delegated
       - /app/node_modules
     depends_on:
-      - catalog-service
+      - firestore
     healthcheck:
       test: ["CMD", "node", "health-check.js"]
       interval: 30s
@@ -117,6 +161,37 @@ services:
       start_period: 40s
     networks:
       - musicstream-network
+    command: npm run dev
+
+  # ==========================================================================
+  # FIRESTORE EMULATOR
+  # ==========================================================================
+  firestore:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: musicstream-firestore
+    ports:
+      - "8080:8080"  # Puerto del emulador
+      - "4000:4000"  # UI web del emulador
+    volumes:
+      # Montar reglas e índices si existen
+      - ../database/firestore/firestore.rules:/firestore.rules:ro
+      - ../database/firestore/firestore.indexes.json:/firestore.indexes.json:ro
+      # Volumen persistente para datos del emulador
+      - firestore_data:/opt/data
+    environment:
+      FIRESTORE_PROJECT_ID: musicstreamlite
+    command: >
+      gcloud emulators firestore start
+      --host-port=0.0.0.0:8080
+      --project=musicstreamlite
+      --rules=/firestore.rules
+    networks:
+      - musicstream-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ==========================================================================
   # FRONTEND
@@ -129,13 +204,17 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:3001
-      - REACT_APP_USER_SERVICE_URL=http://localhost:3002
-      - REACT_APP_ANALYTICS_SERVICE_URL=http://localhost:3003
-      - REACT_APP_ENV=development
-      - CHOKIDAR_USEPOLLING=true
+      # URLs de servicios
+      REACT_APP_CATALOG_SERVICE_URL: http://localhost:3001
+      REACT_APP_USER_SERVICE_URL: http://localhost:3002
+      REACT_APP_ANALYTICS_SERVICE_URL: http://localhost:3003
+      REACT_APP_ENV: development
+      
+      # Para hot-reload en Windows/Mac
+      CHOKIDAR_USEPOLLING: true
+      WATCHPACK_POLLING: true
     volumes:
-      - ../frontend/react-app:/app
+      - ../frontend/react-app:/app:delegated
       - /app/node_modules
     depends_on:
       - catalog-service
@@ -143,20 +222,6 @@ services:
       - analytics-service
     stdin_open: true
     tty: true
-    networks:
-      - musicstream-network
-
-  # ==========================================================================
-  # FIREBASE EMULATORS (Para desarrollo)
-  # ==========================================================================
-  firestore:
-    image: ghcr.io/googlecloudplatform/cloud-firestore-emulator:latest
-    container_name: musicstream-firestore
-    ports:
-      - "8080:8080"
-    environment:
-      - GOOGLE_CLOUD_PROJECT=musicstream-dev
-      - PORT=8080
     networks:
       - musicstream-network
 
@@ -186,24 +251,32 @@ services:
     image: dpage/pgadmin4:latest
     container_name: musicstream-pgadmin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@musicstream.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-      - PGADMIN_CONFIG_SERVER_MODE=False
+      PGADMIN_DEFAULT_EMAIL: admin@musicstream.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
     networks:
-      - musicstack-network
+      - musicstream-network  # ✅ Corregido el typo
+    profiles:
+      - tools  # Solo se levanta con: docker-compose --profile tools up
 
 # ============================================================================
 # VOLUMES
 # ============================================================================
 volumes:
   postgres_data:
-    driver: local
+    name: musicstream-postgres-data
+  firestore_data:
+    name: musicstream-firestore-data
   redis_data:
-    driver: local
+    name: musicstream-redis-data
+  pgadmin_data:
+    name: musicstream-pgadmin-data
 
 # ============================================================================
 # NETWORKS

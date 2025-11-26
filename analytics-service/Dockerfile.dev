@@ -1,0 +1,29 @@
+# ============================================================
+# Dockerfile.dev - Analytics Service (Desarrollo Local)
+# ============================================================
+FROM node:18-alpine
+
+# Instalar herramientas de desarrollo
+RUN apk add --no-cache bash curl
+
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar TODAS las dependencias (incluyendo dev)
+RUN npm install
+
+# Copiar código fuente
+COPY . .
+
+# Exponer puerto
+EXPOSE 8080
+
+# Variables de entorno por defecto (se pueden sobrescribir en docker-compose)
+ENV NODE_ENV=development
+ENV PORT=8080
+
+# Usar nodemon para hot-reload (reinicia automáticamente cuando cambias código)
+# Es como tener un asistente que recarga la app cada vez que guardas un archivo
+CMD ["npm", "run", "dev"]

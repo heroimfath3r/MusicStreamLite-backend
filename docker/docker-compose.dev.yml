@@ -173,9 +173,6 @@ services:
       - "8080:8080"  # Puerto del emulador
       - "4000:4000"  # UI web del emulador
     volumes:
-      # Montar reglas e índices si existen
-      - ../database/firestore/firestore.rules:/firestore.rules:ro
-      - ../database/firestore/firestore.indexes.json:/firestore.indexes.json:ro
       # Volumen persistente para datos del emulador
       - firestore_data:/opt/data
     environment:
@@ -184,7 +181,6 @@ services:
       gcloud emulators firestore start
       --host-port=0.0.0.0:8080
       --project=musicstreamlite
-      --rules=/firestore.rules
     networks:
       - musicstream-network
     healthcheck:
@@ -194,36 +190,33 @@ services:
       retries: 5
 
   # ==========================================================================
-  # FRONTEND
+  # FRONTEND (COMENTADO - NO EXISTE EN ESTE REPO)
   # ==========================================================================
-  frontend:
-    build:
-      context: ../frontend/react-app
-      dockerfile: Dockerfile.dev
-    container_name: musicstream-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      # URLs de servicios
-      REACT_APP_CATALOG_SERVICE_URL: http://localhost:3001
-      REACT_APP_USER_SERVICE_URL: http://localhost:3002
-      REACT_APP_ANALYTICS_SERVICE_URL: http://localhost:3003
-      REACT_APP_ENV: development
-      
-      # Para hot-reload en Windows/Mac
-      CHOKIDAR_USEPOLLING: true
-      WATCHPACK_POLLING: true
-    volumes:
-      - ../frontend/react-app:/app:delegated
-      - /app/node_modules
-    depends_on:
-      - catalog-service
-      - user-service
-      - analytics-service
-    stdin_open: true
-    tty: true
-    networks:
-      - musicstream-network
+  # frontend:
+  #   build:
+  #     context: ../frontend/react-app
+  #     dockerfile: Dockerfile.dev
+  #   container_name: musicstream-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     REACT_APP_CATALOG_SERVICE_URL: http://localhost:3001
+  #     REACT_APP_USER_SERVICE_URL: http://localhost:3002
+  #     REACT_APP_ANALYTICS_SERVICE_URL: http://localhost:3003
+  #     REACT_APP_ENV: development
+  #     CHOKIDAR_USEPOLLING: true
+  #     WATCHPACK_POLLING: true
+  #   volumes:
+  #     - ../frontend/react-app:/app:delegated
+  #     - /app/node_modules
+  #   depends_on:
+  #     - catalog-service
+  #     - user-service
+  #     - analytics-service
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - musicstream-network
 
   # ==========================================================================
   # REDIS (Para cache y sesiones)
